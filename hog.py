@@ -448,7 +448,6 @@ if __name__=='__main__':
     print 'time of slideWindowHOG() on single window with indices given',t2-t1
 
     #---------------Sliding window tests---------------
-    """
     window_size=(200,200)
     stride=4
 
@@ -480,10 +479,7 @@ if __name__=='__main__':
             transform_sqrt=True)
     t2=time.time()
     print 'time of slideWindowHOG() on sliding window',t2-t1
-    """
-
-
-
+ 
     """
     import cProfile
     cProfile.run('''fd3,indices=slideWindowHOG(img2,orientations=9,pixels_per_cell=(16,8),
