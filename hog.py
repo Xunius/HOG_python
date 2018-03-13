@@ -245,9 +245,9 @@ def hog(img,orientations=9,pixels_per_cell=(8,8),
         feature=feature.flatten()
 
     if visualise:
-        return feature,hog_image, hists
+        return feature,hog_image
     else:
-        return feature, hists
+        return feature
 
 
 #---Extract hog from sliding windows of an image---
@@ -418,7 +418,7 @@ if __name__=='__main__':
 
     #----------Get HOG using a standard hog()----------
     t1=time.time()
-    fd2,hog_image2,hists2=hog(img2,orientations=9,pixels_per_cell=(16,8),
+    fd2,hog_image2=hog(img2,orientations=9,pixels_per_cell=(16,8),
             cells_per_block=(3,3),block_norm='l1',feature_vector=False,
             transform_sqrt=True,
             visualise=True)
@@ -479,7 +479,9 @@ if __name__=='__main__':
             transform_sqrt=True)
     t2=time.time()
     print 'time of slideWindowHOG() on sliding window',t2-t1
- 
+
+
+
     """
     import cProfile
     cProfile.run('''fd3,indices=slideWindowHOG(img2,orientations=9,pixels_per_cell=(16,8),
