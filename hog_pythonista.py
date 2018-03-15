@@ -343,6 +343,8 @@ def slideWindowHOG(img,window_size=(128,64),stride=4,
         raise Exception("<block_norm> needs to be one of ['l1','l2','l1-sqrt'].")
 
     #-----------apply power law compression-----------
+    img=numpy.array(img,dtype='float')
+
     if transform_sqrt:
         img=numpy.sqrt(img)
 

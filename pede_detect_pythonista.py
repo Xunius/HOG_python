@@ -10,25 +10,34 @@ Update time: 2018-02-22 15:24:46.
 #--------Import modules-------------------------
 import os
 import numpy
-import hog_pythonista
+from hog_pythonista import slideWindowHOG
 import appex
 from PIL import Image
+import dialogs
+import photos
 
-
-
-
-
+STRIDE=4
+HOG_PARAMETERS={
+      'box_size'        : (128,64),
+      'orientations'    : 9,
+      'pixels_per_cell' : (8,8),
+      'cells_per_block' : (2,2),
+      'block_norm'      : 'l1',
+      'transform_sqrt'  : True,
+      'threshold'      : 1
+}
+FINAL_THRESHOLD=1
 
 def pyramid(image,scale=1.2,min_size=(30,30)):
     yield image
     scale=float(scale)
 
     while True:
-        hh=int(image.size[0]/scale)
-        ww=int(image.size[1]/scale)
+        hh=int(image.size[1]/scale)
+        ww=int(image.size[0]/scale)
         if hh<min_size[0] or ww<min_size[1]:
             break
-        image=image.resize((hh,ww))
+        image=image.resize((ww,hh))
         yield image
 
 
@@ -39,6 +48,7 @@ def slideMatch2(img,stride,theta,intercept,params):
     cells_per_block=params['cells_per_block']
     block_norm=params['block_norm']
     transform_sqrt=params['transform_sqrt']
+    thres=params['threshold']
 
     scale=1.1
     pys=pyramid(img,scale=scale,min_size=box_size)
@@ -46,14 +56,14 @@ def slideMatch2(img,stride,theta,intercept,params):
     result2=[]
     for ii,pii in enumerate(pys):
         pii=numpy.array(pii)
-        hii,wii=pii.shape
+        hii,wii,_=pii.shape
         scaleii=scale**ii
-        print('imgii',ii)
+        print('imgii',ii,pii.shape)
 
         nx=(wii-box_size[1])//stride+1
         ny=(hii-box_size[0])//stride+1
-        print(ny,nx,box_size,stride,orientations,pixels_per_cell,cells_per_block,block_norm,transform_sqrt)
-        features=hog_pythonista.slideWindowHOG(pii,window_size=box_size,
+        
+        features=slideWindowHOG(pii,window_size=box_size,
                 stride=stride,
                 indices=None,
                 return_indices=False,
@@ -63,9 +73,10 @@ def slideMatch2(img,stride,theta,intercept,params):
                 block_norm=block_norm,
                 transform_sqrt=transform_sqrt)
 
-        print(features.shape)
+        #print(features.shape)
         yhats=numpy.dot(features,theta[0])+intercept
-        idx=numpy.where(yhats>=1.0)[0]
+        
+        idx=numpy.where(yhats>=thres)[0]
         idys,idxs=numpy.unravel_index(idx,(ny,nx))
         resultii=numpy.zeros([len(idx),5])
         resultii[:,0]=yhats[idx]
@@ -235,37 +246,26 @@ def non_max_suppression_fast2(boxes, overlapThresh, weight, final_threshold):
     return results
 
 
-#-------------Main---------------------------------
+#-------------Main--------------
 if __name__=='__main__':
 
-    #--------------------Read image--------------------
-    if not appex.is_running_extension():
-        print('Running in Pythonista app, using test image...')
-        img=Image.open('test:Mandrill')
+    #----------Read image-----
+    i = dialogs.alert('Image', '', 'Demo Image', 'Select from Photos')
+    if i == 1:
+        img = Image.open('test:Lenna')
     else:
-        img=appex.get_image()
+        img = photos.pick_image()
         
-    STRIDE=4
-	
-    HOG_PARAMETERS={
-      'box_size'        : (128,64),
-      'orientations'    : 9,
-      'pixels_per_cell' : (8,8),
-      'cells_per_block' : (2,2),
-      'block_norm'      : 'l1',
-      'transform_sqrt'  : True
-    }
-
-    img=img.convert('L')
-    width2=min(400,img.size[1])
-    height2=int(float(img.size[0])/img.size[1]*width2)
+    #img=img.convert('L')
+    width2=min(600,img.size[0])
+    height2=int(float(img.size[1])/img.size[0]*width2)
     img=img.resize((width2,height2))
     #img=numpy.array(img)
-    print(img.size)
+    print('Image size after shrink:',img.size)
 
-    #-----------------Load parameters-----------------
+    #-----Load parameter-------
     folder=os.path.expanduser('~/Documents')
-    abpath_in=os.path.join(folder,'testnpdata.npz')
+    abpath_in=os.path.join(folder,'pede_params.npz')
     npdata=numpy.load(abpath_in)
     theta=npdata['theta']
     intercept=npdata['intercept']
@@ -274,15 +274,13 @@ if __name__=='__main__':
     t1=time.time()
     rects=slideMatch2(img,STRIDE,theta,intercept,HOG_PARAMETERS)
     t2=time.time()
-    print('time',t2-t1)
+    print('time used:',t2-t1,'s')
     print(rects)
 
-    rects2=non_max_suppression_fast2(rects,0.35,True,15)
-    #rects2=non_max_suppression_fast(rects,0.35)
-    #rects2=numpy.array(rects)[:,1:]
+    rects2=non_max_suppression_fast2(rects,0.35,True,FINAL_THRESHOLD)
     print(rects2)
 
-    #-------------------Plot------------------------
+    #------Plot----------
     import matplotlib.pyplot as plt
     import matplotlib.patches as patches
     figure=plt.figure(figsize=(12,10),dpi=100)
@@ -293,10 +291,8 @@ if __name__=='__main__':
 
     for ii, boxii in enumerate(rects2):
         x0,y0,x1,y1=boxii
-        rectii=patches.Rectangle((x0,y0),x1-x0,y1-y0,fill=False)
+        rectii=patches.Rectangle((x0,y0),x1-x0,y1-y0,fill=False,color='g',linewidth=5)
         ax.add_patch(rectii)
 
     plt.show()
-
-        
 
